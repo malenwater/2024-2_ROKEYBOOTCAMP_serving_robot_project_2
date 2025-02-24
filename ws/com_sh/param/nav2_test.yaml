@@ -78,7 +78,7 @@ local_costmap:
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.7  # 장애물 확장 반경/ 장애물로부터 유지할 여유 공간 설정 # -> 최소 폭이 40CM정도이고, 반경이 12CM인 점을 고려하여 8CM정도로 보임., 오차를 고려한 임의의 값 정도,
+        inflation_radius: 0.2  # 장애물 확장 반경/ 장애물로부터 유지할 여유 공간 설정 # -> 최소 폭이 40CM정도이고, 반경이 12CM인 점을 고려하여 8CM정도로 보임., 오차를 고려한 임의의 값 정도,
 
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
