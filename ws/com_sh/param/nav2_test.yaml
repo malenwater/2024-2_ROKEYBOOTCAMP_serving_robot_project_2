@@ -71,14 +71,14 @@ local_costmap:
       width: 3  # 로컬 코스트맵 폭(m)
       height: 3  # 로컬 코스트맵 높이(m)
       resolution: 0.06  # 로컬 코스트맵 해상도(m)
-      robot_radius: 0.175  # 로봇 반경(m)
+      robot_radius: 0.14  # 로봇 반경(m) #
 
       plugins: ["static_layer", "voxel_layer", "inflation_layer"]
       # 장애물, 정적 지도 및 공간 팽창 처리 플러그인
 
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.45  # 장애물 확장 반경/ 장애물로부터 유지할 여유 공간 설정
+        inflation_radius: 0.7  # 장애물 확장 반경/ 장애물로부터 유지할 여유 공간 설정 # -> 최소 폭이 40CM정도이고, 반경이 12CM인 점을 고려하여 8CM정도로 보임., 오차를 고려한 임의의 값 정도,
 
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
