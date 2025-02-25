@@ -149,7 +149,7 @@ local_costmap:
       width: 3
       height: 3
       resolution: 0.06
-      robot_radius: 0.175
+      robot_radius: 0.15 # ** 
       plugins: ["static_layer", "voxel_layer", "inflation_layer"]
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
