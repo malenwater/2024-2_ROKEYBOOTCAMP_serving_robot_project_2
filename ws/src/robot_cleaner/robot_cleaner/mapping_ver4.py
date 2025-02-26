@@ -41,6 +41,12 @@ class Mapping(Node):
         self.robot_y = round(msg.pose.pose.position.y,3)
     # 맵 데이터를 받을 떄마다 목표를 계산
     #  로봇의 목표 위치를 업데이트하여 이동 명령을 내린다.
+        # 초기 위치 저장 (추가 _)
+        if self.initial_x is None and self.initial_y is None:
+            self.initial_x = self.robot_x
+            self.initial_y = self.robot_y
+            self.get_logger().info(f"Initial position stored: ({self.initial_x}, {self.initial_y})")
+
     def callback_mapping(self,msg):
         #if self.is_moving == True:
         #    self.get_logger().info('is_moving is True')
@@ -71,11 +77,14 @@ class Mapping(Node):
             goal_pose = self.goal_pose_detection(np_map,(pose_y,pose_x))
             self.get_logger().info(f"robot pose {pose_x} {pose_y}")
             self.get_logger().info(f"robot act pose {self.robot_x} {self.robot_y}")
+        # 종료 (수정 )
         if goal_pose[0] == -1:
             goal = PoseStamped()
             goal.header.frame_id = 'map'
-            goal.pose.position.x = 0
-            goal.pose.position.y = 0
+            # goal.pose.position.x = 0
+            # goal.pose.position.y = 0
+            goal.pose.position.x = self.initial_x
+            goal.pose.position.y = self.initial_y
             goal.pose.orientation.z = 0.0
             goal.pose.orientation.w = 0.0
             goal.header.stamp = self.get_clock().now().to_msg()
@@ -191,67 +200,6 @@ class Mapping(Node):
         self.get_logger().info(f"goal_pose: {goal_pose}")
         return goal_pose
 
-    # 4방향 old version
-    # def goal_pose_detection(self,map,home):
-    #     home_map = map
-    #     height = home_map.shape[0]
-    #     width = home_map.shape[1]
-    #     init_location = home
-    #     free_zone_idx = np.argwhere(home_map == 0)
-    #     dists = []
-    #     poses = []
-    #     for pose in free_zone_idx:
-    #         is_insert = False
-    #         is_in = [True,True,True,True]    # 위쪽부터 시계 방향으로 검사할 것인가 판단
-    #         if pose[0]==0: # 위쪽 좌표 검사 여부
-    #             is_in[0] = False
-    #         if pose[1]==width-1: # 우측 좌표 검사 여부
-    #             is_in[1] = False
-    #         if pose[0]==height-1: # 아래쪽 좌표 검사 여부
-    #             is_in[2] = False
-    #         if pose[1]==0: # 좌측 좌표 검사 여부
-    #             is_in[3] = False
-    #         if is_in[0] and home_map[pose[0]-1][pose[1]] == -1:
-    #             is_insert = True
-    #         if is_in[1] and home_map[pose[0]][pose[1]+1] == -1:
-    #             is_insert = True
-    #         if is_in[2] and home_map[pose[0]+1][pose[1]] == -1:
-    #             is_insert = True
-    #         if is_in[3] and home_map[pose[0]][pose[1]-1] == -1:
-    #             is_insert = True
-    #         count = 0
-    #         if is_in[0] and home_map[pose[0]-1][pose[1]] == 0:
-    #             count +=1
-    #             if is_in[1] and home_map[pose[0]-1][pose[1]+1] == 0:
-    #                 count +=1
-    #         if is_in[1] and home_map[pose[0]][pose[1]+1] == 0:
-    #             count +=1
-    #             if is_in[2] and home_map[pose[0]+1][pose[1]+1] == 0:
-    #                 count +=1
-    #         if is_in[2] and home_map[pose[0]+1][pose[1]] == 0:
-    #             count +=1
-    #             if is_in[3] and home_map[pose[0]+1][pose[1]-1] == 0:
-    #                 count +=1
-    #         if is_in[3] and home_map[pose[0]][pose[1]-1] == 0:
-    #             count +=1
-    #             if is_in[0] and home_map[pose[0]-1][pose[1]-1] == 0:
-    #                 count +=1
-    #         if is_insert and count >=4:
-    #             dists.append(self.distance(pose,init_location))
-    #             i = [pose[1],pose[0]]
-    #             poses.append(i)
-    #     if len(poses) == 0:
-    #         self.get_logger().info('finish mapping!')
-    #         goal_pose = [-1,-1]
-    #         return goal_pose
-    #     #if self.is_inital == False:
-    #     goal_pose = poses[dists.index(max(dists))]
-    #         #self.is_inital = True
-    #     #else:
-    #         #goal_pose = poses[dists.index(min(dists))]
-    #     self.get_logger().info(f"goal_pose: {goal_pose}")
-    #     return goal_pose
-#goal_pose_detection(home_map,(6,5))
 if __name__ == '__main__':
     #print(np.array(m).reshape(7,6))
     rclpy.init()
