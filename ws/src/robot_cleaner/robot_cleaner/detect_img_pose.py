@@ -7,13 +7,21 @@ from cv_bridge import CvBridge
 from geometry_msgs.msg import TransformStamped
 from tf2_msgs.msg import TFMessage  
 from nav_msgs.msg import Odometry
+from scipy.spatial.transform import Rotation as R
+from geometry_msgs.msg import PoseWithCovarianceStamped
+import numpy as np
 
 BASELINK_TO_CAMERA = np.array([ 
-    [0.000, 1.000, 0.000, 0.000],
+    [0.000, 0.000, 1.000, -0.060],
     [-1.000, 0.000, 0.000, 0.000],
-    [0.000, 0.000, 1.000, 0.244],
+    [0.000, -1.000, 0.000, 0.244],
     [0.000, 0.000, 0.000, 1.000]
 ])
+CAMERA_K = [[202.39749146,   0.,         125.49773407],
+            [  0.,         202.39749146, 125.75233459],
+            [  0.,           0.,           1.        ]]
+CAMERA_D = [[-3.51905060e+00, -2.84767342e+01, -3.02788394e-04,  1.01520610e-03,
+        2.35221481e+02, -3.68542147e+00, -2.67263298e+01,  2.28351166e+02]]
 
 class SIFTDetector():
     def __init__(self, ori_img, cap_img, types: int):
@@ -56,42 +64,57 @@ class ImageSubscriber(Node):
         self.image_sub = self.create_subscription(
             CompressedImage, '/oakd/rgb/preview/image_raw/compressed', self.image_callback, 10)
         self.info_sub = self.create_subscription(CameraInfo, '/oakd/rgb/preview/camera_info', self.info_callback, 10)
-        self.tf_sub = self.create_subscription(TFMessage, '/tf', self.tf_callback, 10)
-        self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
+        self.pose_sub = self.create_subscription(
+            PoseWithCovarianceStamped,
+            '/pose',
+            self.pose_callback,
+            10
+        )
+        # self.odom_sub = self.create_subscription(Odometry, '/odom', self.odom_callback, 10)
         
         self.K = None  # 카메라 내적 행렬
         self.D = None  # 왜곡 계수
         self.tf_map_camera = None
 
-    def tf_callback(self, msg):
-        map_to_odom = None 
-        for transform in msg.transforms:
-            translation = transform.transform.translation
-            rotation = transform.transform.rotation
-            map_to_odom = np.array([
+    def pose_callback(self, msg):
+        # quaternion 값을 받아옴
+        self.get_logger().info(f'스타틍')
+        translation = msg.pose.pose.position
+        rotation = msg.pose.pose.orientation
+        map_to_odom = np.array([
                 [rotation.x, rotation.y, rotation.z, translation.x],
                 [rotation.y, rotation.x, rotation.z, translation.y],
                 [rotation.z, rotation.z, rotation.x, translation.z],
                 [0, 0, 0, 1]
             ])
-        if map_to_odom is not None:
-            self.tf_map_camera = np.dot(map_to_odom, BASELINK_TO_CAMERA)
+        # 변환된 회전 행렬을 로그로 출력
+        quaternion = [rotation.x, rotation.y, rotation.z, rotation.w]
+        # scipy의 Rotation 클래스를 이용하여 quaternion을 회전 행렬로 변환
+        r = R.from_quat(quaternion)
+        rotation_matrix_3x3 = r.as_matrix()
+        map_to_odom[:3, :3] = rotation_matrix_3x3 
+        self.get_logger().info(f'Rotation Matrix (4x4):\n{map_to_odom}')
+        
+        self.tf_map_camera = np.dot(map_to_odom, BASELINK_TO_CAMERA)
+            
 
-    def odom_callback(self, msg):
-        translation = msg.pose.pose.position
-        rotation = msg.pose.pose.orientation
-        odom_to_base_link = np.array([
-            [rotation.x, rotation.y, rotation.z, translation.x],
-            [rotation.y, rotation.x, rotation.z, translation.y],
-            [rotation.z, rotation.z, rotation.x, translation.z],
-            [0, 0, 0, 1]
-        ])
-        if self.tf_map_camera is not None:
-            self.tf_map_camera = np.dot(self.tf_map_camera, odom_to_base_link)
+    # def odom_callback(self, msg):
+    #     translation = msg.pose.pose.position
+    #     rotation = msg.pose.pose.orientation
+    #     odom_to_base_link = np.array([
+    #         [rotation.x, rotation.y, rotation.z, translation.x],
+    #         [rotation.y, rotation.x, rotation.z, translation.y],
+    #         [rotation.z, rotation.z, rotation.x, translation.z],
+    #         [0, 0, 0, 1]
+    #     ])
+    #     if self.tf_map_camera is not None:
+    #         self.tf_map_camera = np.dot(self.tf_map_camera, odom_to_base_link)
+    #         self.get_logger().info(f"")
 
     def info_callback(self, msg):
         self.K = np.array(msg.k).reshape((3,3))
-        self.D = np.array(msg.d[:5]).reshape((1,5))
+        self.D = np.array(msg.d).reshape((1,8))
+        print(f"self.D {self.D} , self.K { self.K}")
 
     def convert_to_map_coordinates(self, pixel_x, pixel_y, depth=1.0):
         if self.K is None or self.tf_map_camera is None:
