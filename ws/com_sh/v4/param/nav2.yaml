@@ -140,21 +140,21 @@ controller_server:
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 5.0
-      publish_frequency: 2.0
+      update_frequency: 3.0 # **
+      publish_frequency: 2.0 
       global_frame: odom
       robot_base_frame: base_link
       use_sim_time: True
       rolling_window: true
       width: 3
       height: 3
-      resolution: 0.02 # **
+      resolution: 0.015 # **
       robot_radius: 0.173  # **
       plugins: ["static_layer", "voxel_layer", "inflation_layer"]
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 40.0 # **
-        inflation_radius: 0.2 # **
+        inflation_radius: 0.25 # **
       voxel_layer:
         plugin: "nav2_costmap_2d::VoxelLayer"
         enabled: True
@@ -189,7 +189,7 @@ global_costmap:
       robot_base_frame: base_link
       use_sim_time: True
       robot_radius: 0.173 # **
-      resolution: 0.02 # **
+      resolution: 0.015 # **
       track_unknown_space: true
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
       obstacle_layer:
@@ -212,7 +212,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 40.0 # ** 
-        inflation_radius: 0.2 # **
+        inflation_radius: 0.25 # **
       always_send_full_costmap: True
 
 planner_server:
