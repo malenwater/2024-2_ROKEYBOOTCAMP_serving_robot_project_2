@@ -42,10 +42,6 @@ class Mapping(Node):
     # 맵 데이터를 받을 떄마다 목표를 계산
     #  로봇의 목표 위치를 업데이트하여 이동 명령을 내린다.
         # 초기 위치 저장 (추가 _)
-        if self.initial_x is None and self.initial_y is None:
-            self.initial_x = self.robot_x
-            self.initial_y = self.robot_y
-            self.get_logger().info(f"Initial position stored: ({self.initial_x}, {self.initial_y})")
 
     def callback_mapping(self,msg):
         #if self.is_moving == True:
@@ -65,11 +61,11 @@ class Mapping(Node):
         # km = KMeans(n_clusters=10)
         # y_pred = km.fit_predict(np_map)
         # print(len(y_pred))
-        init_pose_x = int(origin_x/per_pixel)
-        init_pose_y = int(origin_y/per_pixel)
+        self.init_pose_x = float(origin_x/per_pixel)
+        self.init_pose_y = float(origin_y/per_pixel)
         if self.is_inital == False:
-            goal_pose = self.goal_pose_detection(np_map,(init_pose_y,init_pose_x))
-            self.get_logger().info(f"init pose: {init_pose_x}, {init_pose_y}")
+            goal_pose = self.goal_pose_detection(np_map,(self.init_pose_y,self.init_pose_x))
+            self.get_logger().info(f"init pose: {self.init_pose_x}, {self.init_pose_y}")
             self.is_inital = True
         else:
             pose_x = int((origin_x + self.robot_x)/per_pixel)
@@ -83,8 +79,8 @@ class Mapping(Node):
             goal.header.frame_id = 'map'
             # goal.pose.position.x = 0
             # goal.pose.position.y = 0
-            goal.pose.position.x = self.initial_x
-            goal.pose.position.y = self.initial_y
+            goal.pose.position.x = self.init_pose_x
+            goal.pose.position.y = self.init_pose_y
             goal.pose.orientation.z = 0.0
             goal.pose.orientation.w = 0.0
             goal.header.stamp = self.get_clock().now().to_msg()
@@ -94,8 +90,8 @@ class Mapping(Node):
             self.get_logger().info('go to init pose')
             return
         #self.get_logger().info('origin:',origin_x,origin_y)
-        local_map_x = goal_pose[0] - init_pose_x
-        local_map_y = goal_pose[1] - init_pose_y
+        local_map_x = goal_pose[0] - self.init_pose_x
+        local_map_y = goal_pose[1] - self.init_pose_y
         goal_x = local_map_x * per_pixel
         goal_y = local_map_y * per_pixel
         #print('local map', local_map_x, local_map_y)
