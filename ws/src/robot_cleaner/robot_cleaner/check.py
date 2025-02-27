@@ -30,7 +30,7 @@ class ImageMatcher(Node):
             flann = cv2.FlannBasedMatcher(index_params, search_params)
             matches = flann.knnMatch(self.des1, des2, k=2)
             
-            good_matches = [m for m, n in matches if m.distance < 0.5 * n.distance]
+            good_matches = [m for m, n in matches if m.distance < 0.4 * n.distance]
             if len(good_matches) < 4:
                 self.get_logger().info("Not enough good matches found.")
                 return

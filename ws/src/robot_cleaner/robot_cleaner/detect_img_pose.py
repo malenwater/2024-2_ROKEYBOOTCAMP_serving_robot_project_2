@@ -43,7 +43,7 @@ class SIFTDetector():
         self.CAMERA_K = CAMERA_K
         self.CAMERA_D = CAMERA_D
         # 모든 pt에 대해 변환된 값을 리스트로 저장
-        self.transformed_pts = [(kp.pt[0] / self.EXT_PIXEL * self.EXT, kp.pt[1] / self.EXT_PIXEL * self.EXT,0) for kp in self.kp1]
+        self.transformed_pts = [(kp.pt[0] / self.EXT_PIXEL * self.EXT, kp.pt[1] / self.EXT_PIXEL * self.EXT, 0) for kp in self.kp1]
         # print(f'self.cap_img.shape : {self.cap_img.shape}')
 
         # 변환된 pt 리스트 출력
@@ -74,7 +74,7 @@ class SIFTDetector():
         for match, n in matches:
             # match의 첫 번째 요소(m)는 self.kp1에서, 두 번째 요소(n)는 self.kp2에서 매칭된 특징점
             # self.transformed_pts는 self.kp1에서 추출된 좌표들로부터 계산된 변환된 좌표들
-            if match.distance < 0.5 * n.distance:
+            if match.distance < 0.4 * n.distance:
                 pt1 = self.transformed_pts[match.queryIdx]  # self.kp1에서 매칭된 transformed_pts
                 pt2 = self.kp2[match.trainIdx].pt         # self.kp2에서 매칭된 원본 이미지의 좌표
                 good_matches.append(match)
@@ -101,9 +101,10 @@ class SIFTDetector():
         initial_translation = np.array([0, 0.3, 0.6], dtype=np.float64)  # 변환 벡터 (z축으로 0.35m)
 
         success, rvec, tvec, inliers = cv2.solvePnPRansac(object_points, image_points, self.CAMERA_K, self.CAMERA_D,
-                                                        useExtrinsicGuess=True, 
-                                                        rvec=initial_rotation, 
-                                                        tvec=initial_translation)
+                                                        # useExtrinsicGuess=True, 
+                                                        # rvec=initial_rotation, 
+                                                        # tvec=initial_translation
+                                                        )
         # success, rvec, tvec, inliers = cv2.solvePnPRansac(object_points, image_points, self.CAMERA_K, self.CAMERA_D,reprojectionError=2.0,iterationsCount=1000)
         if success:
             R, _ = cv2.Rodrigues(rvec)
@@ -114,7 +115,9 @@ class SIFTDetector():
             # print("✅ Rotation Vector (rvec):\n", rvec)
             # print("✅ Translation Vector (tvec):\n", tvec)
             # print("✅ Transformation Matrix (T):\n", T)
-            self.result_img =   T
+            z = (T[:, 3].reshape(4, 1))
+            z[2] = z[2] * 2
+            self.result_img =  z
             
             # 🔹 특징점 매칭 이미지 생성 및 출력
             # matched_image = cv2.drawMatches(self.ori_img, self.kp1, self.cap_img, self.kp2, good_matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
@@ -219,9 +222,12 @@ class ImageSubscriber(Node):
             return
         # 마커 위치 추가
         point = Point()
-        point.x = self.map_coords[0][3]
-        point.y = self.map_coords[1][3]
-        point.z = self.map_coords[2][3]
+        # point.x = self.map_coords[0][3]
+        # point.y = self.map_coords[1][3]
+        # point.z = self.map_coords[2][3]
+        point.x = self.map_coords[0][0]
+        point.y = self.map_coords[1][0]
+        point.z = self.map_coords[2][0]
         marker.points.append(point)
 
         self.publisher.publish(marker)
