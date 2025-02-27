@@ -17,14 +17,14 @@ BASELINK_TO_CAMERA = np.array([
     [0.000, -1.000, 0.000, 0.244],
     [0.000, 0.000, 0.000, 1.000]
 ])
-CAMERA_K =np.array([[202.39749146,   0.,         125.49773407],
-            [  0.,         202.39749146, 125.75233459],
-            [  0.,           0.,           1.        ]]) 
-CAMERA_D = np.array([[-3.51905060e+00, -2.84767342e+01, -3.02788394e-04,  1.01520610e-03,
-        2.35221481e+02, -3.68542147e+00, -2.67263298e+01,  2.28351166e+02]]) 
+# CAMERA_K =np.array([[202.39749146,   0.,         125.49773407],
+#             [  0.,         202.39749146, 125.75233459],
+#             [  0.,           0.,           1.        ]]) 
+# CAMERA_D = np.array([[-3.51905060e+00, -2.84767342e+01, -3.02788394e-04,  1.01520610e-03,
+#         2.35221481e+02, -3.68542147e+00, -2.67263298e+01,  2.28351166e+02]]) 
 
 class SIFTDetector():
-    def __init__(self, ori_img, cap_img, types: int):
+    def __init__(self, ori_img, cap_img, types: int, CAMERA_K, CAMERA_D):
         self.ori_img = ori_img
         self.cap_img = cap_img
         self.result = False
@@ -34,9 +34,11 @@ class SIFTDetector():
         self.EXT_PIXEL = 680
         self.sift = cv2.SIFT_create()
         self.kp1, self.des1 = self.sift.detectAndCompute(self.ori_img, None)
-        
+        self.CAMERA_K = CAMERA_K
+        self.CAMERA_D = CAMERA_D
         # 모든 pt에 대해 변환된 값을 리스트로 저장
         self.transformed_pts = [(kp.pt[0] / self.EXT_PIXEL * self.EXT, kp.pt[1] / self.EXT_PIXEL * self.EXT,0) for kp in self.kp1]
+        print(f'self.cap_img.shape : {self.cap_img.shape}')
 
         # 변환된 pt 리스트 출력
         # print(self.transformed_pts)
@@ -46,6 +48,8 @@ class SIFTDetector():
         self.detect()
 
     def detect(self):
+        if self.CAMERA_K is None:
+            return
         self.kp2, self.des2 = self.sift.detectAndCompute(self.cap_img, None)
 
         if self.des1 is None or self.des2 is None or len(self.kp1) < 2 or len(self.kp2) < 2:
@@ -62,16 +66,19 @@ class SIFTDetector():
         self.result = True
         # good_matches에서 매칭된 각 특징점에 대해 transformed_pts와 kp2의 좌표 짝지기
         object_points = []
+        good_matches = []
         image_points = []
         for match, n in matches:
             # match의 첫 번째 요소(m)는 self.kp1에서, 두 번째 요소(n)는 self.kp2에서 매칭된 특징점
             # self.transformed_pts는 self.kp1에서 추출된 좌표들로부터 계산된 변환된 좌표들
-            pt1 = self.transformed_pts[match.queryIdx]  # self.kp1에서 매칭된 transformed_pts
-            pt2 = self.kp2[match.trainIdx].pt         # self.kp2에서 매칭된 원본 이미지의 좌표
-            
-            # matched_pts에 변환된 pt1과 원본 pt2 좌표를 추가
-            object_points.append(pt1)
-            image_points.append(pt2)
+            if match.distance < 0.85 * n.distance:
+                pt1 = self.transformed_pts[match.queryIdx]  # self.kp1에서 매칭된 transformed_pts
+                pt2 = self.kp2[match.trainIdx].pt         # self.kp2에서 매칭된 원본 이미지의 좌표
+                good_matches.append(match)
+                # matched_pts에 변환된 pt1과 원본 pt2 좌표를 추가
+                object_points.append(pt1)
+                image_points.append(pt2)
+                
         object_points = np.array(object_points)
         image_points = np.array(image_points)
         # print((object_points))
@@ -79,7 +86,11 @@ class SIFTDetector():
         # print((image_points))
         print(len(object_points))
         print(len(image_points))
-        success, rvec, tvec = cv2.solvePnP(object_points, image_points, CAMERA_K, CAMERA_D, flags=cv2.SOLVEPNP_ITERATIVE)
+        print(f'object_points : {object_points[:10]}')
+        print(f'image_points : {image_points[:10]}')
+        print(f'camera K : {self.CAMERA_K}')
+        print(f'camera K : {self.CAMERA_D}')
+        success, rvec, tvec, inliers = cv2.solvePnPRansac(object_points, image_points, self.CAMERA_K, self.CAMERA_D)
         if success:
             R, _ = cv2.Rodrigues(rvec)
             T = np.eye(4)
@@ -90,7 +101,13 @@ class SIFTDetector():
             print("✅ Translation Vector (tvec):\n", tvec)
             print("✅ Transformation Matrix (T):\n", T)
             self.result_img =   T[:, 3].reshape(4, 1) 
-
+            
+            # 🔹 특징점 매칭 이미지 생성 및 출력
+            matched_image = cv2.drawMatches(self.ori_img, self.kp1, self.cap_img, self.kp2, good_matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+            cv2.imshow("Feature Matching", matched_image)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            
 class ImageSubscriber(Node):
     def __init__(self, template_path):
         super().__init__('image_subscriber')
@@ -99,7 +116,8 @@ class ImageSubscriber(Node):
         self.target_size = (500, 500)
         self.template_image = cv2.resize(self.template_image, self.target_size)
         self.detector = None
-
+        self.K = None
+        self.D = None
         self.image_sub = self.create_subscription(
             CompressedImage, '/oakd/rgb/preview/image_raw/compressed', self.image_callback, 10)
         self.info_sub = self.create_subscription(CameraInfo, '/oakd/rgb/preview/camera_info', self.info_callback, 10)
@@ -139,16 +157,16 @@ class ImageSubscriber(Node):
     def info_callback(self, msg):
         self.K = np.array(msg.k).reshape((3,3))
         self.D = np.array(msg.d).reshape((1,8))
-        # print(f"self.D {self.D} , self.K { self.K}")
+        print(f"self.D {self.D} , self.K { self.K}")
 
     def image_callback(self, msg):
         try:
             cam_image = self.bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
             cam_image = cv2.cvtColor(cam_image, cv2.COLOR_BGR2GRAY)
-            cam_image = cv2.resize(cam_image, self.target_size)
-            self.detector = SIFTDetector(self.template_image, cam_image, types=1)
-            print(f"man man man: {self.tf_map_camera}")
-            print(f"man man man: {self.detector.result_img}")
+            self.detector = SIFTDetector(self.template_image, cam_image, 1, self.K, self.D)
+            print(f"man man 로봇 좌표계: {self.tf_map_camera}")
+            print(f"man man 로봇 감지: {self.detector.result}")
+            print(f"man man 카메라로부터 이미지 거리: {self.detector.result_img}")
             
             if self.detector.result and self.tf_map_camera is not None:
                 print("✅ Object detected and mapped!")
