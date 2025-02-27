@@ -17,20 +17,32 @@ BASELINK_TO_CAMERA = np.array([
     [0.000, -1.000, 0.000, 0.244],
     [0.000, 0.000, 0.000, 1.000]
 ])
-CAMERA_K = [[202.39749146,   0.,         125.49773407],
+CAMERA_K =np.array([[202.39749146,   0.,         125.49773407],
             [  0.,         202.39749146, 125.75233459],
-            [  0.,           0.,           1.        ]]
-CAMERA_D = [[-3.51905060e+00, -2.84767342e+01, -3.02788394e-04,  1.01520610e-03,
-        2.35221481e+02, -3.68542147e+00, -2.67263298e+01,  2.28351166e+02]]
+            [  0.,           0.,           1.        ]]) 
+CAMERA_D = np.array([[-3.51905060e+00, -2.84767342e+01, -3.02788394e-04,  1.01520610e-03,
+        2.35221481e+02, -3.68542147e+00, -2.67263298e+01,  2.28351166e+02]]) 
 
 class SIFTDetector():
     def __init__(self, ori_img, cap_img, types: int):
         self.ori_img = ori_img
         self.cap_img = cap_img
         self.result = False
+        self.result_img = None
         self.types = types
+        self.EXT = 0.18
+        self.EXT_PIXEL = 680
         self.sift = cv2.SIFT_create()
         self.kp1, self.des1 = self.sift.detectAndCompute(self.ori_img, None)
+        
+        # 모든 pt에 대해 변환된 값을 리스트로 저장
+        self.transformed_pts = [(kp.pt[0] / self.EXT_PIXEL * self.EXT, kp.pt[1] / self.EXT_PIXEL * self.EXT,0) for kp in self.kp1]
+
+        # 변환된 pt 리스트 출력
+        # print(self.transformed_pts)
+        print(len(self.transformed_pts))
+        # print()
+        # print(self.des1.shape)
         self.detect()
 
     def detect(self):
@@ -39,18 +51,45 @@ class SIFTDetector():
         if self.des1 is None or self.des2 is None or len(self.kp1) < 2 or len(self.kp2) < 2:
             return
 
-        self.good_matches = self.match_features(self.des1, self.des2)
-        n = 65 if self.types == 1 else 100 if self.types == 2 else 0
-
-        if len(self.good_matches) > n:
-            self.result = True
-
-    def match_features(self, des1, des2, threshold=0.85):
         index_params = dict(algorithm=1, trees=5)
         search_params = dict(checks=50)
         flann = cv2.FlannBasedMatcher(index_params, search_params)
-        matches = flann.knnMatch(des1, des2, k=2)
-        return [m for m, n in matches if m.distance < threshold * n.distance]
+        matches = flann.knnMatch(self.des1, self.des2, k=2)
+        # print(matches)
+        print(len(matches))
+        if len(matches) < 4 :
+            return
+        self.result = True
+        # good_matches에서 매칭된 각 특징점에 대해 transformed_pts와 kp2의 좌표 짝지기
+        object_points = []
+        image_points = []
+        for match, n in matches:
+            # match의 첫 번째 요소(m)는 self.kp1에서, 두 번째 요소(n)는 self.kp2에서 매칭된 특징점
+            # self.transformed_pts는 self.kp1에서 추출된 좌표들로부터 계산된 변환된 좌표들
+            pt1 = self.transformed_pts[match.queryIdx]  # self.kp1에서 매칭된 transformed_pts
+            pt2 = self.kp2[match.trainIdx].pt         # self.kp2에서 매칭된 원본 이미지의 좌표
+            
+            # matched_pts에 변환된 pt1과 원본 pt2 좌표를 추가
+            object_points.append(pt1)
+            image_points.append(pt2)
+        object_points = np.array(object_points)
+        image_points = np.array(image_points)
+        # print((object_points))
+        # print()
+        # print((image_points))
+        print(len(object_points))
+        print(len(image_points))
+        success, rvec, tvec = cv2.solvePnP(object_points, image_points, CAMERA_K, CAMERA_D, flags=cv2.SOLVEPNP_ITERATIVE)
+        if success:
+            R, _ = cv2.Rodrigues(rvec)
+            T = np.eye(4)
+            T[:3, :3] = R
+            T[:3, 3] = tvec.flatten()
+
+            print("✅ Rotation Vector (rvec):\n", rvec)
+            print("✅ Translation Vector (tvec):\n", tvec)
+            print("✅ Transformation Matrix (T):\n", T)
+            self.result_img =   T[:, 3].reshape(4, 1) 
 
 class ImageSubscriber(Node):
     def __init__(self, template_path):
@@ -96,36 +135,11 @@ class ImageSubscriber(Node):
         self.get_logger().info(f'Rotation Matrix (4x4):\n{map_to_odom}')
         
         self.tf_map_camera = np.dot(map_to_odom, BASELINK_TO_CAMERA)
-            
-
-    # def odom_callback(self, msg):
-    #     translation = msg.pose.pose.position
-    #     rotation = msg.pose.pose.orientation
-    #     odom_to_base_link = np.array([
-    #         [rotation.x, rotation.y, rotation.z, translation.x],
-    #         [rotation.y, rotation.x, rotation.z, translation.y],
-    #         [rotation.z, rotation.z, rotation.x, translation.z],
-    #         [0, 0, 0, 1]
-    #     ])
-    #     if self.tf_map_camera is not None:
-    #         self.tf_map_camera = np.dot(self.tf_map_camera, odom_to_base_link)
-    #         self.get_logger().info(f"")
 
     def info_callback(self, msg):
         self.K = np.array(msg.k).reshape((3,3))
         self.D = np.array(msg.d).reshape((1,8))
-        print(f"self.D {self.D} , self.K { self.K}")
-
-    def convert_to_map_coordinates(self, pixel_x, pixel_y, depth=1.0):
-        if self.K is None or self.tf_map_camera is None:
-            return None
-
-        inv_K = np.linalg.inv(self.K)
-        pixel_coords = np.array([pixel_x, pixel_y, 1])
-        camera_coords = depth * inv_K @ pixel_coords
-        camera_coords = np.append(camera_coords, 1)
-        map_coords = self.tf_map_camera @ camera_coords
-        return map_coords[:3]
+        # print(f"self.D {self.D} , self.K { self.K}")
 
     def image_callback(self, msg):
         try:
@@ -133,13 +147,13 @@ class ImageSubscriber(Node):
             cam_image = cv2.cvtColor(cam_image, cv2.COLOR_BGR2GRAY)
             cam_image = cv2.resize(cam_image, self.target_size)
             self.detector = SIFTDetector(self.template_image, cam_image, types=1)
+            print(f"man man man: {self.tf_map_camera}")
+            print(f"man man man: {self.detector.result_img}")
             
             if self.detector.result and self.tf_map_camera is not None:
                 print("✅ Object detected and mapped!")
                 print(f"TF Map to Camera: \n{self.tf_map_camera}")
-                
-                detected_x, detected_y = 250, 250  # 임시 객체 위치 (중앙)
-                map_coords = self.convert_to_map_coordinates(detected_x, detected_y, depth=1.0)
+                map_coords = np.dot(self.tf_map_camera, self.detector.result_img)
                 if map_coords is not None:
                     print(f"🌍 Object in Map Coordinates: {map_coords}")
             else:

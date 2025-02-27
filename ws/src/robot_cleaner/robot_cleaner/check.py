@@ -22,15 +22,20 @@ class SIFTDetector():
         self.ori_img = ori_img
         self.cap_img = cap_img
         self.result = False
+        self.result_img = None
         self.types = types
         self.EXT = 0.18
         self.EXT_PIXEL = 680
         self.sift = cv2.SIFT_create()
+        index_params = dict(algorithm=1, trees=5)
+        search_params = dict(checks=50)
         self.kp1, self.des1 = self.sift.detectAndCompute(self.ori_img, None)
+        self.flann = cv2.FlannBasedMatcher(index_params, search_params)
         
         # 모든 pt에 대해 변환된 값을 리스트로 저장
         self.transformed_pts = [(kp.pt[0] / self.EXT_PIXEL * self.EXT, kp.pt[1] / self.EXT_PIXEL * self.EXT,0) for kp in self.kp1]
-
+        print(self.transformed_pts[0])
+        print(self.kp1[0].pt)
         # 변환된 pt 리스트 출력
         # print(self.transformed_pts)
         print(len(self.transformed_pts))
@@ -44,12 +49,10 @@ class SIFTDetector():
         if self.des1 is None or self.des2 is None or len(self.kp1) < 2 or len(self.kp2) < 2:
             return
 
-        index_params = dict(algorithm=1, trees=5)
-        search_params = dict(checks=50)
-        flann = cv2.FlannBasedMatcher(index_params, search_params)
-        matches = flann.knnMatch(self.des1, self.des2, k=2)
-        print(matches)
-        print(len(matches))
+
+        matches = self.flann.knnMatch(self.des1, self.des2, k=2)
+        # print(matches)
+        # print(len(matches))
         # good_matches에서 매칭된 각 특징점에 대해 transformed_pts와 kp2의 좌표 짝지기
         object_points = []
         image_points = []
@@ -64,11 +67,11 @@ class SIFTDetector():
             image_points.append(pt2)
         object_points = np.array(object_points)
         image_points = np.array(image_points)
-        print((object_points))
-        print()
-        print((image_points))
-        print(len(object_points))
-        print(len(image_points))
+        # print((object_points))
+        # print()
+        # print((image_points))
+        # print(len(object_points))
+        # print(len(image_points))
         success, rvec, tvec = cv2.solvePnP(object_points, image_points, CAMERA_K, CAMERA_D)
         if success:
             R, _ = cv2.Rodrigues(rvec)
@@ -79,7 +82,7 @@ class SIFTDetector():
             print("✅ Rotation Vector (rvec):\n", rvec)
             print("✅ Translation Vector (tvec):\n", tvec)
             print("✅ Transformation Matrix (T):\n", T)
-
+            self.result_img = T
 
 
 template_image = cv2.imread("/home/sunwolee/Downloads/ext_orig.png", cv2.IMREAD_GRAYSCALE)
