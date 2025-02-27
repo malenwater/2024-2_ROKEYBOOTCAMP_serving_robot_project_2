@@ -31,7 +31,7 @@ class Mapping(Node):
         #    self.get_logger().info('is_moving is True')
         #    return
         if self.is_finish == True:
-
+            #self.get_logger().info('is_finish is True')
             return
         mapping = msg
         width = mapping.info.width
@@ -43,12 +43,11 @@ class Mapping(Node):
         # km = KMeans(n_clusters=10)
         # y_pred = km.fit_predict(np_map)
         # print(len(y_pred))
-
-        self.init_pose_x = int(origin_x/per_pixel)
-        self.init_pose_y = int(origin_y/per_pixel)
+        init_pose_x = int(origin_x/per_pixel)
+        init_pose_y = int(origin_y/per_pixel)
         if self.is_inital == False:
-            goal_pose = self.goal_pose_detection(np_map,(self.init_pose_y,self.init_pose_x))
-            self.get_logger().info(f"init pose: {self.init_pose_x}, {self.init_pose_y}")
+            goal_pose = self.goal_pose_detection(np_map,(init_pose_y,init_pose_x))
+            self.get_logger().info(f"init pose: {init_pose_x}, {init_pose_y}")
             self.is_inital = True
         else:
             pose_x = int((origin_x + self.robot_x)/per_pixel)
@@ -59,8 +58,8 @@ class Mapping(Node):
         if goal_pose[0] == -1:
             goal = PoseStamped()
             goal.header.frame_id = 'map'
-            goal.pose.position.x = self.init_pose_x * per_pixel
-            goal.pose.position.y = self.init_pose_y * per_pixel
+            goal.pose.position.x = 0.0
+            goal.pose.position.y = 0.0
             goal.pose.orientation.z = 0.0
             goal.pose.orientation.w = 0.0
             goal.header.stamp = self.get_clock().now().to_msg()
@@ -68,12 +67,10 @@ class Mapping(Node):
             self.pub_goal.publish(goal)
             self.is_finish = True
             self.get_logger().info('go to init pose')
-
-            self.get_logger().info(f"init goal: {self.init_pose_x * per_pixel}, {self.init_pose_y * per_pixel}")
             return
         #self.get_logger().info('origin:',origin_x,origin_y)
-        local_map_x = goal_pose[0] - self.init_pose_x
-        local_map_y = goal_pose[1] - self.init_pose_y
+        local_map_x = goal_pose[0] - init_pose_x
+        local_map_y = goal_pose[1] - init_pose_y
         goal_x = local_map_x * per_pixel
         goal_y = local_map_y * per_pixel
         #print('local map', local_map_x, local_map_y)
@@ -170,7 +167,7 @@ class Mapping(Node):
                 i = [pose[1],pose[0]]
                 poses.append(i)
         if len(poses) == 0:
-            self.get_logger().info('finish mapping!')
+            #self.get_logger().info('finish mapping!')
             goal_pose = [-1,-1]
             return goal_pose
         #if self.is_inital == False:
@@ -186,8 +183,7 @@ if __name__ == '__main__':
     rclpy.init()
     node = Mapping()
     rclpy.spin(node)
-
-    node.get_logger().info("Exploration finished. Waiting before suhtdown...")
+    node.get_logger().info("Exploration finished. Waitiong before suhtdown...")
     time.sleep(3)
     rclpy.shutdown()
     node.destroy_node()
