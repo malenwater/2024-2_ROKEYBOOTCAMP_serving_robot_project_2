@@ -49,6 +49,7 @@ class Mapping(Node):
         if self.is_inital == False:
             goal_pose = self.goal_pose_detection(np_map,(self.init_pose_y,self.init_pose_x))
             self.get_logger().info(f"init pose: {self.init_pose_x}, {self.init_pose_y}")
+            self.get_logger().info(f"init pose: {self.init_pose_x * per_pixel}, {self.init_pose_y * per_pixel}")
             self.is_inital = True
         else:
             pose_x = int((origin_x + self.robot_x)/per_pixel)
