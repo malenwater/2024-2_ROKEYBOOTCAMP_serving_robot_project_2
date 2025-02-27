@@ -19,6 +19,7 @@ BASELINK_TO_CAMERA = np.array([
     [0.000, -1.000, 0.000, 0.244],
     [0.000, 0.000, 0.000, 1.000]
 ])
+  
 # CAMERA_K =np.array([[202.39749146,   0.,         125.49773407],
 #             [  0.,         202.39749146, 125.75233459],
 #             [  0.,           0.,           1.        ]]) 
@@ -34,6 +35,11 @@ class SIFTDetector():
         self.types = types
         self.EXT = 0.18
         self.EXT_PIXEL = 680
+        
+        self.MAN_HEIGHT = 0.18
+        self.MAN_WIGHT = 0.23
+        self.MAN_HEIGHT_PIXEL = 680
+        self.MAN_WIGHT_PIXEL = 869
         self.sift = cv2.SIFT_create()
         
         # print(ori_img.shape)
@@ -43,7 +49,8 @@ class SIFTDetector():
         self.CAMERA_K = CAMERA_K
         self.CAMERA_D = CAMERA_D
         # 모든 pt에 대해 변환된 값을 리스트로 저장
-        self.transformed_pts = [(kp.pt[0] / self.EXT_PIXEL * self.EXT, kp.pt[1] / self.EXT_PIXEL * self.EXT, 0) for kp in self.kp1]
+        # self.transformed_pts = [(kp.pt[0] / self.EXT_PIXEL * self.EXT, kp.pt[1] / self.EXT_PIXEL * self.EXT, 0) for kp in self.kp1]
+        self.transformed_pts = [(kp.pt[0] / self.MAN_WIGHT_PIXEL * self.MAN_WIGHT, kp.pt[1] / self.MAN_HEIGHT_PIXEL * self.MAN_HEIGHT, 0) for kp in self.kp1]
         # print(f'self.cap_img.shape : {self.cap_img.shape}')
 
         # 변환된 pt 리스트 출력
@@ -116,7 +123,7 @@ class SIFTDetector():
             # print("✅ Translation Vector (tvec):\n", tvec)
             # print("✅ Transformation Matrix (T):\n", T)
             z = (T[:, 3].reshape(4, 1))
-            z[2] = z[2] * 2
+            # z[2] = z[2] * 2
             self.result_img =  z
             
             # 🔹 특징점 매칭 이미지 생성 및 출력
@@ -235,7 +242,8 @@ class ImageSubscriber(Node):
 
 def main():
     rclpy.init()
-    template_path = "/home/sunwolee/Downloads/ext_orig.png"
+    # template_path = "/home/sunwolee/Downloads/ext_orig.png"
+    template_path = "/home/sunwolee/Downloads/man_orig.png"
     node = ImageSubscriber(template_path)
     rclpy.spin(node)
     node.destroy_node()

@@ -47,7 +47,8 @@ class ImageMatcher(Node):
 
 def main():
     rclpy.init()
-    template_path = "/home/sunwolee/Downloads/ext_orig.png"
+    # template_path = "/home/sunwolee/Downloads/ext_orig.png"
+    template_path = "/home/sunwolee/Downloads/man_orig.png"
     node = ImageMatcher(template_path)
     rclpy.spin(node)
     node.destroy_node()
