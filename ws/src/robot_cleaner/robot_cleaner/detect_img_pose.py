@@ -158,6 +158,23 @@ class ImageSubscriber(Node):
         self.K = np.array(msg.k).reshape((3,3))
         self.D = np.array(msg.d).reshape((1,8))
         print(f"self.D {self.D} , self.K { self.K}")
+<<<<<<< Updated upstream
+=======
+
+    # 감지된 객체 픽셀좌표 -> 맵 좌표로 변환
+    # 1.픽셀좌표 -> 카메라 좌표 
+    def convert_to_map_coordinates(self, pixel_x, pixel_y, depth=1.0):
+        if self.K is None or self.tf_map_camera is None:
+            return None
+        # k는 카메라 내부 파라미터 행렬, 
+        # inv_k는, 역행렬 <픽셀좌표 -> 3d카메라좌표>
+        inv_K = np.linalg.inv(self.K)
+        pixel_coords = np.array([pixel_x, pixel_y, 1])
+        camera_coords = depth * inv_K @ pixel_coords
+        camera_coords = np.append(camera_coords, 1)
+        map_coords = self.tf_map_camera @ camera_coords
+        return map_coords[:3]
+>>>>>>> Stashed changes
 
     def image_callback(self, msg):
         try:

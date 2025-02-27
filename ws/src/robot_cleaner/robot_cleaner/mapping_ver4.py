@@ -12,6 +12,9 @@ import time
 실시간으로 생성된 slam 맵을 분석
 미지의 영역을 자율적으로 찾아 탐색하면서 최종적으로 맵 전체를 자동으로 완성하는 코드
 
+**수정사항 (15:40)
+픽셀 단위와, 실제거리 간 오류를 수정
+
 '''
 class Mapping(Node):
     def __init__(self):
@@ -110,25 +113,13 @@ class Mapping(Node):
         self.pub_goal.publish(goal)
         self.get_logger().info("publish goal")
         self.is_moving = True
-        # for raw in np_map:
-        #     print(raw)
-        #time.sleep(1)
-    
+        
     # 두 점 사이 유클리드 거리의 제곱을 계산하는 메서드
     def distance(self,p1,p2):
         return ( (p1[0]-p2[0])**2 + (p1[1]-p2[1])**2 )
     # 맵 데이터에서, 탐색 가능한 가장 효율적인 목표 위치를 찾는다.
     #  미지 영역 옆의 자유 공간을 목표로 선택한다. 다음으로 이동할 가장 최적의 목표 위치를 탐색
 
-    '''
-    kante_아이디어
-    현재 4방향 검사를 수행하고 있기에, 8군데 방향으로 (대각선 포함) 으로 확장
-
-    goal_pose_detection()코드
-    맵 데이터 -> 미탐색영억(-1) 지역 근처의 최적 목표 지점을 찾는 역할이다.
-
-
-    '''
     def goal_pose_detection(self, map, home):
         home_map = map
         height = home_map.shape[0]
@@ -194,7 +185,7 @@ class Mapping(Node):
         # 가장 먼 위치를 목표로 선택하여 탐색 영역 확장
         goal_pose = poses[dists.index(max(dists))]
         self.get_logger().info(f"goal_pose: {goal_pose}")
-        return goal_pose
+        return goal_pose # ** 이부분 문제?
 
 if __name__ == '__main__':
     #print(np.array(m).reshape(7,6))

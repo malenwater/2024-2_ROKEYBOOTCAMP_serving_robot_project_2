@@ -100,8 +100,12 @@ class SIFTDetector():
             self.result_img =   T[:, 3].reshape(4, 1) 
 
 
-template_image = cv2.imread("/home/sunwolee/Downloads/ext_orig.png", cv2.IMREAD_GRAYSCALE)
-cam_image = cv2.imread('/home/sunwolee/Downloads/20250226_194848.jpg', cv2.IMREAD_GRAYSCALE)
+template_image = cv2.imread("/home/kante/Downloads/poster_reference.png", cv2.IMREAD_GRAYSCALE)
+cam_image = cv2.imread('/home/kante/Downloads/20250226_194848.jpg', cv2.IMREAD_GRAYSCALE)
+
+#template_image = cv2.imread("/home/kante/Documents/GitHub/2024-2_ROKEYBOOTCAMP_serving_robot_project_2/poster_reference.png", cv2.IMREAD_GRAYSCALE)
+#cam_image = cv2.imread('/home/kante/Documents/GitHub/2024-2_ROKEYBOOTCAMP_serving_robot_project_2/20250226_194848.jpg', cv2.IMREAD_GRAYSCALE)
+
 detector = SIFTDetector(template_image, cam_image, types=1)
 
 
