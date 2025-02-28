@@ -66,9 +66,9 @@ class Mapping(Node):
             goal.pose.orientation.w = 0.0
             goal.header.stamp = self.get_clock().now().to_msg()
             #for _ in range(5):
-            self.pub_goal.publish(goal)
+            #self.pub_goal.publish(goal)
             self.is_finish = True
-            self.get_logger().info('go to init pose')
+            self.get_logger().info('go to init pose! finish!! ')
             return
         #self.get_logger().info('origin:',origin_x,origin_y)
         local_map_x = goal_pose[0] - init_pose_x
@@ -164,7 +164,7 @@ class Mapping(Node):
                 count +=1
                 if is_in[0] and home_map[pose[0]-1][pose[1]-1] == 0:
                     count +=1
-            if is_insert and count >=4:
+            if is_insert and count >=5:
                 dists.append(self.distance(pose,init_location))
                 i = [pose[1],pose[0]]
                 poses.append(i)
@@ -174,6 +174,7 @@ class Mapping(Node):
             return goal_pose
         #if self.is_inital == False:
         goal_pose = poses[dists.index(max(dists))]
+        #goal_pose = poses[dists.index(min(dists))] ##  최단 경로 탐색 
             #self.is_inital = True
         #else:
             #goal_pose = poses[dists.index(min(dists))]
