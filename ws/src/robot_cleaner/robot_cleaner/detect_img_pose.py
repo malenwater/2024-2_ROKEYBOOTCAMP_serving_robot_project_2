@@ -38,7 +38,7 @@ class SIFTDetector():
         self.types = types
         self.EXT = 0.18
         self.EXT_PIXEL = 680
-        
+        self.MODE = None
         self.MAN_HEIGHT = 0.18
         self.MAN_WIGHT = 0.23
         self.MAN_HEIGHT_PIXEL = 680
@@ -85,9 +85,11 @@ class SIFTDetector():
         if len(good_matches_EXT) > len(good_matches_MAN):
             matches = matches_EXT
             self.transformed_pts = self.transformed_pts_EXT
+            self.MODE = 1
         else:
             matches = matches_MAN
             self.transformed_pts = self.transformed_pts_MAN
+            self.MODE = 2
             
         # print(matches)
         # print(len(matches))
@@ -240,16 +242,22 @@ class ImageSubscriber(Node):
         marker.id = 0
         marker.type = Marker.POINTS  # 포인트 타입 마커
         marker.action = Marker.ADD
-
+        if self.map_coords is None:
+            return
+        if self.detector.MODE == 1:
+            marker.color.r = 0.0  # 빨간색
+            marker.color.g = 1.0
+            marker.color.b = 0.0
+        else:
+            marker.color.r = 0.0  # 빨간색
+            marker.color.g = 0.0
+            marker.color.b = 1.0
         # 마커 색상 및 크기 설정
         marker.scale.x = 0.2  # 포인트 크기
         marker.scale.y = 0.2
         marker.color.a = 1.0  # 투명도
-        marker.color.r = 0.0  # 빨간색
-        marker.color.g = 1.0
-        marker.color.b = 0.0
-        if self.map_coords is None:
-            return
+
+
         # 마커 위치 추가
         point = Point()
         # point.x = self.map_coords[0][3]
