@@ -46,6 +46,8 @@ class Mapping(Node):
         init_pose_x = int(origin_x/per_pixel)
         init_pose_y = int(origin_y/per_pixel)
         if self.is_inital == False:
+            self.init_pose_x = init_pose_y
+            self.init_pose_y = init_pose_x
             goal_pose = self.goal_pose_detection(np_map,(init_pose_y,init_pose_x))
             self.get_logger().info(f"init pose: {init_pose_x}, {init_pose_y}")
             self.is_inital = True
@@ -58,8 +60,8 @@ class Mapping(Node):
         if goal_pose[0] == -1:
             goal = PoseStamped()
             goal.header.frame_id = 'map'
-            goal.pose.position.x = 0.0
-            goal.pose.position.y = 0.0
+            goal.pose.position.x = self.init_pose_x * per_pixel
+            goal.pose.position.y = self.init_pose_y * per_pixel
             goal.pose.orientation.z = 0.0
             goal.pose.orientation.w = 0.0
             goal.header.stamp = self.get_clock().now().to_msg()
