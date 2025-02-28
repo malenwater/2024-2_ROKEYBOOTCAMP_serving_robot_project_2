@@ -26,10 +26,13 @@ BASELINK_TO_CAMERA = np.array([
 # CAMERA_D = np.array([[-3.51905060e+00, -2.84767342e+01, -3.02788394e-04,  1.01520610e-03,
 #         2.35221481e+02, -3.68542147e+00, -2.67263298e+01,  2.28351166e+02]]) 
 
+
+   
 class SIFTDetector():
-    def __init__(self, ori_img, cap_img, types: int, CAMERA_K, CAMERA_D):
-        self.ori_img = ori_img
-        self.cap_img = cap_img
+    def __init__(self, ori_img_ext,ori_img_man, types: int, CAMERA_K, CAMERA_D):
+        self.ori_img_ext = ori_img_ext
+        self.ori_img_man = ori_img_man
+        self.cap_img = None
         self.result = False
         self.result_img = None
         self.types = types
@@ -45,33 +48,47 @@ class SIFTDetector():
         # print(ori_img.shape)
         # print(cap_img.shape)
         
-        self.kp1, self.des1 = self.sift.detectAndCompute(self.ori_img, None)
+        self.kp1_EXT, self.des1_EXT = self.sift.detectAndCompute(self.ori_img_ext, None)
+        self.kp1_MAN, self.des1_MAN = self.sift.detectAndCompute(self.ori_img_man, None)
         self.CAMERA_K = CAMERA_K
         self.CAMERA_D = CAMERA_D
         # 모든 pt에 대해 변환된 값을 리스트로 저장
-        # self.transformed_pts = [(kp.pt[0] / self.EXT_PIXEL * self.EXT, kp.pt[1] / self.EXT_PIXEL * self.EXT, 0) for kp in self.kp1]
-        self.transformed_pts = [(kp.pt[0] / self.MAN_WIGHT_PIXEL * self.MAN_WIGHT, kp.pt[1] / self.MAN_HEIGHT_PIXEL * self.MAN_HEIGHT, 0) for kp in self.kp1]
+        self.transformed_pts_EXT = [(kp.pt[0] / self.EXT_PIXEL * self.EXT, kp.pt[1] / self.EXT_PIXEL * self.EXT, 0) for kp in self.kp1_EXT]
+        self.transformed_pts_MAN = [(kp.pt[0] / self.MAN_WIGHT_PIXEL * self.MAN_WIGHT, kp.pt[1] / self.MAN_HEIGHT_PIXEL * self.MAN_HEIGHT, 0) for kp in self.kp1_MAN]
+        self.transformed_pts = None
         # print(f'self.cap_img.shape : {self.cap_img.shape}')
-
+        self.max_dist = 0.5
         # 변환된 pt 리스트 출력
         # print(self.transformed_pts)
         # print(len(self.transformed_pts))
         # print()
         # print(self.des1.shape)
-        self.detect()
-
-    def detect(self):
-        if self.CAMERA_K is None:
+    def set_KD(self,K,D):
+        self.CAMERA_K = K
+        self.CAMERA_D = D
+    def detect(self,cam_image):
+        self.cap_img = cam_image
+        if self.CAMERA_K is None or self.cap_img is None:
             return
         self.kp2, self.des2 = self.sift.detectAndCompute(self.cap_img, None)
 
-        if self.des1 is None or self.des2 is None or len(self.kp1) < 2 or len(self.kp2) < 2:
+        if self.des1_MAN is None or self.des2 is None or len(self.kp1_MAN) < 2 or len(self.kp2) < 2:
             return
 
         index_params = dict(algorithm=1, trees=5)
         search_params = dict(checks=50)
         flann = cv2.FlannBasedMatcher(index_params, search_params)
-        matches = flann.knnMatch(self.des1, self.des2, k=2)
+        matches_EXT = flann.knnMatch(self.des1_EXT, self.des2, k=2)
+        matches_MAN = flann.knnMatch(self.des1_MAN, self.des2, k=2)
+        good_matches_EXT = [m for m, n in matches_EXT if m.distance < self.max_dist * n.distance]
+        good_matches_MAN = [m for m, n in matches_MAN if m.distance < self.max_dist * n.distance]
+        if len(good_matches_EXT) > len(good_matches_MAN):
+            matches = matches_EXT
+            self.transformed_pts = self.transformed_pts_EXT
+        else:
+            matches = matches_MAN
+            self.transformed_pts = self.transformed_pts_MAN
+            
         # print(matches)
         # print(len(matches))
         # good_matches에서 매칭된 각 특징점에 대해 transformed_pts와 kp2의 좌표 짝지기
@@ -81,7 +98,7 @@ class SIFTDetector():
         for match, n in matches:
             # match의 첫 번째 요소(m)는 self.kp1에서, 두 번째 요소(n)는 self.kp2에서 매칭된 특징점
             # self.transformed_pts는 self.kp1에서 추출된 좌표들로부터 계산된 변환된 좌표들
-            if match.distance < 0.4 * n.distance:
+            if match.distance < self.max_dist * n.distance:
                 pt1 = self.transformed_pts[match.queryIdx]  # self.kp1에서 매칭된 transformed_pts
                 pt2 = self.kp2[match.trainIdx].pt         # self.kp2에서 매칭된 원본 이미지의 좌표
                 good_matches.append(match)
@@ -131,13 +148,14 @@ class SIFTDetector():
             # cv2.imshow("Feature Matching", matched_image)
             # cv2.waitKey(1000)
             # cv2.destroyAllWindows()
-            
+        self.cap_img = None
         
 class ImageSubscriber(Node):
-    def __init__(self, template_path):
+    def __init__(self, template_path_ext,template_path_man):
         super().__init__('image_subscriber')
         self.bridge = CvBridge()
-        self.template_image = cv2.imread(template_path, cv2.IMREAD_GRAYSCALE)
+        self.template_image_ext = cv2.imread(template_path_ext, cv2.IMREAD_GRAYSCALE)
+        self.template_image_man = cv2.imread(template_path_man, cv2.IMREAD_GRAYSCALE)
         self.detector = None
         self.K = None
         self.D = None
@@ -157,6 +175,7 @@ class ImageSubscriber(Node):
         self.K = None  # 카메라 내적 행렬
         self.D = None  # 왜곡 계수
         self.tf_map_camera = None
+        self.detector = SIFTDetector(self.template_image_ext, self.template_image_man, 1, self.K, self.D)
 
     def pose_callback(self, msg):
         # quaternion 값을 받아옴
@@ -182,7 +201,10 @@ class ImageSubscriber(Node):
     def info_callback(self, msg):
         self.K = np.array(msg.k).reshape((3,3))
         self.D = np.array(msg.d).reshape((1,8))
-        # print(f"self.D {self.D} , self.K { self.K}")
+        self.K[0][0] = 390
+        self.K[1][1] = 390
+        print(f"self.D {self.D} , self.K { self.K}")
+        self.detector.set_KD(self.K,self.D)
 
 
     def image_callback(self, msg):
@@ -190,7 +212,7 @@ class ImageSubscriber(Node):
             self.get_logger().info(f"Received image with format: {msg.format}")
             cam_image = self.bridge.compressed_imgmsg_to_cv2(msg, "bgr8")
             cam_image = cv2.cvtColor(cam_image, cv2.COLOR_BGR2GRAY)
-            self.detector = SIFTDetector(self.template_image, cam_image, 1, self.K, self.D)
+            self.detector.detect(cam_image)
             # print(f"man man 로봇 좌표계: {self.tf_map_camera}")
             # print(f"man man 로봇 감지: {self.detector.result}")
             print(f"man man 카메라로부터 이미지 거리: \n {self.detector.result_img}")
@@ -201,6 +223,7 @@ class ImageSubscriber(Node):
                 self.map_coords = np.dot(self.tf_map_camera, self.detector.result_img)
                 if self.map_coords is not None:
                     pass
+                    self.detector.result = False
                     # print(f"🌍 Object in Map Coordinates: \n{self.map_coords}")
             else:
                 print("❌ No valid detection or missing TF data.")
@@ -242,9 +265,9 @@ class ImageSubscriber(Node):
 
 def main():
     rclpy.init()
-    # template_path = "/home/sunwolee/Downloads/ext_orig.png"
-    template_path = "/home/sunwolee/Downloads/man_orig.png"
-    node = ImageSubscriber(template_path)
+    template_path_ext = "/home/sunwolee/Downloads/ext_orig.png"
+    template_path_man = "/home/sunwolee/Downloads/man_orig.png"
+    node = ImageSubscriber(template_path_ext,template_path_man)
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
