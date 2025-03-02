@@ -1,0 +1,105 @@
+bt_navigator:
+  ros__parameters:
+    use_sim_time: True  # 시뮬레이션 시간 사용 여부
+    global_frame: map  # 전역 프레임
+    robot_base_frame: base_link  # 로봇의 기본 프레임
+    odom_topic: odom  # 오도메트리 토픽
+    bt_loop_duration: 10  # 행동트리 반복 주기 (초)
+    default_server_timeout: 20  # 서버 기본 타임아웃 (초)
+    plugin_lib_names:  # 사용 가능한 행동트리 플러그인 리스트
+      - nav2_compute_path_to_pose_action_bt_node
+      - nav2_compute_path_through_poses_action_bt_node
+      - nav2_smooth_path_action_bt_node
+      - nav2_follow_path_action_bt_node
+      - nav2_spin_action_bt_node
+      - nav2_wait_action_bt_node
+      # 이하 생략 (행동트리 기능 확장 플러그인)
+
+bt_navigator_navigate_through_poses_rclcpp_node:
+  ros__parameters:
+    use_sim_time: True  # 행동트리 노드의 시뮬레이션 시간 사용 여부
+
+bt_navigator_navigate_to_pose_rclcpp_node:
+  ros__parameters:
+    use_sim_time: True  # 행동트리 단일 목표지점 이동의 시뮬레이션 시간 사용 여부
+
+controller_server:
+  ros__parameters:
+    use_sim_time: True  # 컨트롤러 서버 시뮬레이션 시간 사용 여부
+    controller_frequency: 20.0  # 컨트롤러 동작 주파수 (Hz)
+    min_x_velocity_threshold: 0.001  # 최소 x방향 속도 임계값
+    min_y_velocity_threshold: 0.5  # 최소 y방향 속도 임계값
+    min_theta_velocity_threshold: 0.001  # 최소 회전 속도 임계값
+    failure_tolerance: 0.3  # 실패 허용 오차
+    progress_checker_plugin: "progress_checker"  # 진행 상태 검사 플러그인
+    goal_checker_plugins: ["general_goal_checker"]  # 목표 도착 검사 플러그인
+    controller_plugins: ["FollowPath"]  # 경로 추종 플러그인
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"  # 간단한 진행상태 확인 플러그인
+      required_movement_radius: 0.5  # 필수 이동 반경
+      movement_time_allowance: 10.0  # 이동 허용 시간 (초)
+
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      # xy_goal_tolerance: 0.25  # 목표 도착 xy 허용 오차 (m)
+      xy_goal_tolerance: 0.2  # 수정 ** 목표 도착 xy 허용 오차 (m)
+      yaw_goal_tolerance: 0.25  # 목표 도착 yaw 허용 오차 (rad)
+
+    FollowPath:
+      plugin: "dwb_core::DWBLocalPlanner"  # 경로 추종을 위한 로컬 플래너
+      debug_trajectory_details: True  # 궤적 상세정보 디버깅 여부
+      max_vel_x: 0.26  # 최대 선속도 (m/s)
+      max_vel_theta: 1.0  # 최대 회전 속도 (rad/s)
+      acc_lim_x: 2.5  # 가속도 제한 (m/s²)
+      acc_lim_theta: 3.2  # 각 가속도 제한 (rad/s²)
+      decel_lim_x: -2.5  # 감속 제한
+      vx_samples: 20  # 선속도 샘플 개수
+      vtheta_samples: 20  # 각속도 샘플 개수
+      sim_time: 1.7  # 궤적 시뮬레이션 시간 (초)
+      transform_tolerance: 0.2  # 좌표 변환 허용 오차 (초)
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 5.0  # 로컬 코스트맵 업데이트 주파수 (Hz)
+      publish_frequency: 2.0  # 로컬 코스트맵 발행 주파수 (Hz)
+      global_frame: odom
+      robot_base_frame: base_link
+      rolling_window: true  # 로봇 중심 이동창으로 맵 이동
+      width: 3  # 로컬 코스트맵 폭(m)
+      height: 3  # 로컬 코스트맵 높이(m)
+      resolution: 0.06  # 로컬 코스트맵 해상도(m)
+      robot_radius: 0.14  # 로봇 반경(m) #
+
+      plugins: ["static_layer", "voxel_layer", "inflation_layer"]
+      # 장애물, 정적 지도 및 공간 팽창 처리 플러그인
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        inflation_radius: 0.2  # 장애물 확장 반경/ 장애물로부터 유지할 여유 공간 설정 # -> 최소 폭이 40CM정도이고, 반경이 12CM인 점을 고려하여 8CM정도로 보임., 오차를 고려한 임의의 값 정도,
+
+      voxel_layer:
+        plugin: "nav2_costmap_2d::VoxelLayer"
+        publish_voxel_map: True  # 복셀맵 발행 여부
+        max_obstacle_height: 2.0  # 최대 장애물 높이
+
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: True  # 지도 구독 설정
+
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 20.0  # 글로벌 플래너 예상 주파수 (Hz)
+    planner_plugins: ["GridBased"]  # 플래너 플러그인
+    GridBased:
+      plugin: "nav2_navfn_planner/NavfnPlanner"
+      tolerance: 0.5  # 목표점 도달 허용 오차
+
+velocity_smoother:
+  ros__parameters:
+    smoothing_frequency: 20.0  # 속도 부드럽게 조정 주파수 (Hz)
+    max_velocity: [0.26, 0.0, 1.0]  # 최대 속도 (x, y, theta)
+    max_accel: [2.5, 0.0, 3.2]  # 최대 가속도
+    velocity_timeout: 1.0  # 속도 명령 타임아웃 (초)

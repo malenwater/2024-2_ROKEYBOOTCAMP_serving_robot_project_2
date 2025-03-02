@@ -1,0 +1,86 @@
+slam_toolbox:
+  ros__parameters:
+
+    # ========================
+    # Solver(최적화 알고리즘) 설정
+    # ========================
+    solver_plugin: solver_plugins::CeresSolver  # Ceres Solver를 사용하여 SLAM 최적화 수행
+    ceres_linear_solver: SPARSE_NORMAL_CHOLESKY  # 희소 행렬에 적합한 선형 솔버 사용
+    ceres_preconditioner: SCHUR_JACOBI  # 슈어 분해(Jacobi 방식) 사전 조건자 사용
+    ceres_trust_strategy: LEVENBERG_MARQUARDT  # Levenberg-Marquardt 알고리즘 사용 (비선형 최적화 기법)
+    ceres_dogleg_type: TRADITIONAL_DOGLEG  # Dogleg 방식 설정
+    ceres_loss_function: None  # 손실 함수 없음 (기본값)
+
+    # ========================
+    # ROS 프레임 설정
+    # ========================
+    odom_frame: odom  # 오도메트리(odom) 프레임
+    map_frame: map  # 맵 프레임
+    base_frame: base_link  # 로봇의 기준 좌표 프레임
+    scan_topic: scan  # 라이다(LiDAR) 스캔 데이터를 받을 토픽
+    mode: mapping  # 맵핑 모드 (SLAM 실행 시 사용)
+
+    # ========================
+    # 기본적인 SLAM 설정
+    # ========================
+    debug_logging: false  # 디버그 로그 출력 여부 (false: 출력 안 함)
+    throttle_scans: 1  # 처리할 스캔 데이터를 제한하는 정도 (1이면 모든 스캔 사용)
+    transform_publish_period: 0.02  # tf 좌표 변환을 퍼블리시하는 주기 (초 단위)
+    map_update_interval: 0.5  # 맵 갱신 주기 (초 단위)
+    # resolution: 0.05  # 맵 해상도 (m/pixel)
+    resolution: 0.03  # 수정 ** 맵 해상도 (m/pixel)
+    # max_laser_range: 12.0  # 라이다의 최대 감지 거리 (m)
+    max_laser_range: 6.0  # 수정 ** 실내니까, 라이다의 최대 감지 거리 (m)
+    minimum_time_interval: 0.25  # 스캔 업데이트 최소 시간 간격 (초)
+    transform_timeout: 0.2  # 좌표 변환 타임아웃 (초)
+    tf_buffer_duration: 30.0  # TF 버퍼 지속 시간 (초)
+    stack_size_to_use: 40000000  # SLAM 실행을 위한 스택 크기 설정 (메모리 할당)
+    enable_interactive_mode: true  # GUI 또는 명령어로 상호작용 가능 여부
+
+    # ========================
+    # SLAM 스캔 매칭 설정
+    # ========================
+    use_scan_matching: true  # 스캔 매칭 기능 사용 여부
+    use_scan_barycenter: true  # 스캔 중심을 기준으로 계산할지 여부
+    minimum_travel_distance: 0.0  # 이동 시 업데이트할 최소 거리 (m)
+    minimum_travel_heading: 0.0  # 이동 시 업데이트할 최소 회전 각도 (rad)
+    scan_buffer_size: 20  # 스캔 버퍼 크기 (최근 20개의 스캔 데이터를 보관)
+    scan_buffer_maximum_scan_distance: 12.0  # 최대 스캔 거리 제한 (m)
+    link_match_minimum_response_fine: 0.1  # 스캔 매칭 응답 임계값 (정밀 모드)
+    link_scan_maximum_distance: 1.5  # 스캔 매칭을 시도할 최대 거리 (m)
+    loop_search_maximum_distance: 3.0  # 루프 클로징을 검색할 최대 거리 (m)
+    do_loop_closing: true  # 루프 클로징(맵 정합) 활성화 여부
+    loop_match_minimum_chain_size: 10  # 루프 클로징을 수행할 최소 연결 크기
+    loop_match_maximum_variance_coarse: 3.0  # 루프 클로징 오차 허용치 (coarse 단계)
+    loop_match_minimum_response_coarse: 0.35  # 루프 클로징 매칭 최소 응답값 (coarse 단계)
+    loop_match_minimum_response_fine: 0.45  # 루프 클로징 매칭 최소 응답값 (fine 단계)
+
+    # ========================
+    # 상관 관계 매칭 설정 (Correlation)
+    # ========================
+    correlation_search_space_dimension: 0.5  # 상관 관계 검색 공간 크기 (m)
+    correlation_search_space_resolution: 0.01  # 상관 관계 검색 해상도 (m)
+    correlation_search_space_smear_deviation: 0.1  # 상관 관계 공간 확산 정도
+
+    # ========================
+    # 루프 클로징 상관 관계 설정
+    # ========================
+    loop_search_space_dimension: 8.0  # 루프 클로징 검색 공간 크기 (m)
+    loop_search_space_resolution: 0.05  # 루프 클로징 검색 해상도 (m)
+    loop_search_space_smear_deviation: 0.03  # 루프 클로징 공간 확산 정도
+
+    # ========================
+    # 스캔 매칭 최적화 설정
+    # ========================
+    #distance_variance_penalty: 0.5  # 거리 오차 패널티 (낮을수록 정밀함)
+    #angle_variance_penalty: 1.0  # 각도 오차 패널티 (낮을수록 정밀함)
+    # **수정
+    distance_variance_penalty: 0.6  # 거리 오차 패널티 (낮을수록 정밀함)
+    angle_variance_penalty: 1.2  # 각도 오차 패널티 (낮을수록 정밀함)
+
+    fine_search_angle_offset: 0.00349  # 정밀 검색 각도 오프셋 (rad)
+    coarse_search_angle_offset: 0.349  # 대략적 검색 각도 오프셋 (rad)
+    coarse_angle_resolution: 0.0349  # 대략적 각도 해상도 (rad)
+    minimum_angle_penalty: 0.9  # 최소 각도 패널티
+    minimum_distance_penalty: 0.5  # 최소 거리 패널티
+    use_response_expansion: true  # 응답 확장을 사용할지 여부
