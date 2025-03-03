@@ -1,0 +1,12 @@
+발표자료
+	- A3-자율 탐색 시스템.pptx
+코드
+	- A3_mapping.py
+	- A3_pnp.py
+	- 해당 오토맵핑과 pnp의 경우, 각각 알맞은 이미지 경로를 설정해주어야 합니다.
+시연 영상
+	- A3_오토맵핑시연영상.mp4
+	- pnp시연영상.mp4
+yaml 수정
+	- param/nav2.yaml
+	- param/slam.yaml
