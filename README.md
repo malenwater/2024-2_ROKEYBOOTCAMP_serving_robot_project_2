@@ -48,5 +48,6 @@
 
 ## 🎥 Demo Video
 - [터틀봇4 자동 맵핑 영상](https://youtu.be/OAdRA_p5VME)
+- [터틀봇4 자동 맵핑 노트북 영상](https://youtube.com/shorts/3EIw-CQubxo?feature=share)
 - [소화기 및 쓰러진 사람 이미지 위치 영상](https://youtube.com/shorts/we-peWtMpCA?feature=share)
 
